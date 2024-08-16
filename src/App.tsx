@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [shapes, setShapes] = useState<any[]>([]);
   const [lines, setLines] = useState<any[]>([]);
   const isDrawing = useRef(false);
+  const startPoint = useRef<{ x: number; y: number } | null>(null);
 
   // canvas dragging
   const { isCanvasDragging, handleCanvasDragStart, handleCanvasDragEnd } =
@@ -62,38 +63,43 @@ const App: React.FC = () => {
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (tool !== Tool.Line) return;
     isDrawing.current = true;
     const stage = e.target.getStage();
     const pos = stage?.getRelativePointerPosition();
-    if (tool === Tool.Line && pos) {
+    if (pos) {
+      startPoint.current = { x: pos.x, y: pos.y };
       setLines([
         ...lines,
-        { tool, points: [pos.x, pos.y], id: `line-${Date.now()}` },
+        { id: `line-${Date.now()}`, points: [pos.x, pos.y, pos.x, pos.y] },
       ]);
     }
   };
 
+  // handle mouse move to update the endpoint of the line
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    // no drawing - skipping
-    if (!isDrawing.current || tool !== Tool.Line) {
-      return;
-    }
+    if (!isDrawing.current || tool !== Tool.Line || !startPoint.current) return;
 
     const stage = e.target.getStage();
-    const point = stage?.getRelativePointerPosition();
+    const pos = stage?.getRelativePointerPosition();
 
-    let lastLine = lines[lines.length - 1];
-    // add point
-    if (!point) return;
-    lastLine.points = lastLine.points.concat([point.x, point.y]);
+    if (!pos) return;
 
-    // replace last
-    lines.splice(lines.length - 1, 1, lastLine);
-    setLines(lines.concat());
+    const lastLine = lines[lines.length - 1];
+    lastLine.points = [
+      startPoint.current.x,
+      startPoint.current.y,
+      pos.x,
+      pos.y,
+    ];
+
+    setLines(lines.slice(0, -1).concat(lastLine));
   };
 
+  // handle mouse up to finish drawing the line
   const handleMouseUp = () => {
     isDrawing.current = false;
+    startPoint.current = null;
   };
 
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {

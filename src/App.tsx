@@ -38,10 +38,10 @@ const App: React.FC = () => {
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
-    const { x, y } = stage?.getPointerPosition() || { x: 0, y: 0 };
+    const pos = stage?.getRelativePointerPosition();
 
-    if (tool === Tool.Line) {
-      setNewLinePoints([x, y]); // Начальная точка линии
+    if (tool === Tool.Line && pos) {
+      setNewLinePoints([pos.x, pos.y]); // Начальная точка линии
       setIsDrawing(true);
     }
   };
@@ -50,11 +50,18 @@ const App: React.FC = () => {
     if (!isDrawing || tool !== Tool.Line) return;
 
     const stage = e.target.getStage();
-    const { x, y } = stage?.getPointerPosition() || { x: 0, y: 0 };
+    const pos = stage?.getRelativePointerPosition() || { x: 0, y: 0 };
 
-    // Обновляем конечную точку линии
-    const updatedLinePoints = [newLinePoints[0], newLinePoints[1], x, y];
-    setNewLinePoints(updatedLinePoints);
+    if (pos) {
+      // Обновляем конечную точку линии
+      const updatedLinePoints = [
+        newLinePoints[0],
+        newLinePoints[1],
+        pos.x,
+        pos.y,
+      ];
+      setNewLinePoints(updatedLinePoints);
+    }
   };
 
   const handleMouseUp = () => {
@@ -67,10 +74,10 @@ const App: React.FC = () => {
 
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
-    const { x, y } = stage?.getPointerPosition() || { x: 0, y: 0 };
+    const pos = stage?.getRelativePointerPosition();
 
-    if (tool === Tool.Shape && selectedShape) {
-      const newShape = createShape(selectedShape, x, y);
+    if (tool === Tool.Shape && selectedShape && pos) {
+      const newShape = createShape(selectedShape, pos.x, pos.y);
       setShapes([...shapes, newShape]);
     }
   };

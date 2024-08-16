@@ -1,6 +1,6 @@
 import { Stage, Layer, Rect, Line, Circle, Star } from "react-konva";
 import Konva from "konva";
-import { useState } from "react";
+import { useState, useRef } from "react";
 // Global context
 import { useGlobalContext } from "./context";
 // components
@@ -15,9 +15,7 @@ const App: React.FC = () => {
   // local state
   const [shapes, setShapes] = useState<any[]>([]);
   const [lines, setLines] = useState<any[]>([]);
-  // for straight lines
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [newLinePoints, setNewLinePoints] = useState<number[]>([]);
+  const isDrawing = useRef(false);
 
   // canvas dragging
   const { isCanvasDragging, handleCanvasDragStart, handleCanvasDragEnd } =
@@ -64,39 +62,38 @@ const App: React.FC = () => {
   };
 
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    isDrawing.current = true;
     const stage = e.target.getStage();
     const pos = stage?.getRelativePointerPosition();
-
     if (tool === Tool.Line && pos) {
-      setNewLinePoints([pos.x, pos.y]); // Starting point of the line
-      setIsDrawing(true);
+      setLines([
+        ...lines,
+        { tool, points: [pos.x, pos.y], id: `line-${Date.now()}` },
+      ]);
     }
   };
 
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDrawing || tool !== Tool.Line) return;
+    // no drawing - skipping
+    if (!isDrawing.current || tool !== Tool.Line) {
+      return;
+    }
 
     const stage = e.target.getStage();
-    const pos = stage?.getRelativePointerPosition() || { x: 0, y: 0 };
+    const point = stage?.getRelativePointerPosition();
 
-    if (pos) {
-      // Renew last point of the line
-      const updatedLinePoints = [
-        newLinePoints[0],
-        newLinePoints[1],
-        pos.x,
-        pos.y,
-      ];
-      setNewLinePoints(updatedLinePoints);
-    }
+    let lastLine = lines[lines.length - 1];
+    // add point
+    if (!point) return;
+    lastLine.points = lastLine.points.concat([point.x, point.y]);
+
+    // replace last
+    lines.splice(lines.length - 1, 1, lastLine);
+    setLines(lines.concat());
   };
 
   const handleMouseUp = () => {
-    if (isDrawing && tool === Tool.Line) {
-      setLines([...lines, newLinePoints]); // Добавляем новую линию в массив линий
-      setIsDrawing(false); // Завершаем процесс рисования
-      setNewLinePoints([]); // Сбрасываем временные точки
-    }
+    isDrawing.current = false;
   };
 
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -147,6 +144,31 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLineDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const id = e.target.id();
+    const { x, y } = e.target.position();
+
+    setLines(
+      lines.map((line) => {
+        if (line.id === id) {
+          const dx = x - line.points[0];
+          const dy = y - line.points[1];
+          return {
+            ...line,
+            points: line.points.map((point: any, index: any) =>
+              index % 2 === 0 ? point + dx : point + dy
+            ),
+          };
+        }
+        return line;
+      })
+    );
+  };
+
+  const handleLineDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    // finish moving
+  };
+
   return (
     <div className="full-screen">
       <Stage
@@ -158,8 +180,8 @@ const App: React.FC = () => {
         style={{ cursor: getCursorStyle() }} // dynamically changing cursor
         onClick={handleStageClick}
         onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
+        onMousemove={handleMouseMove}
+        onMouseup={handleMouseUp}
       >
         <Layer>
           {shapes.map((shape, i) => {
@@ -212,27 +234,19 @@ const App: React.FC = () => {
             }
             return null;
           })}
-          {lines.map((linePoints, i) => {
-            const x1 = linePoints[0];
-            const y1 = linePoints[1];
-            const x2 = linePoints[2];
-            const y2 = linePoints[3];
-
-            return (
-              <Line
-                key={i}
-                points={[0, 0, x2 - x1, y2 - y1]} // Рисуем линию из (0, 0)
-                x={x1} // Устанавливаем начальную позицию
-                y={y1} // Устанавливаем начальную позицию
-                stroke="black"
-                strokeWidth={5}
-                draggable={tool === Tool.Cursor}
-              />
-            );
-          })}
-          {isDrawing && (
-            <Line points={newLinePoints} stroke="black" strokeWidth={5} />
-          )}
+          {lines.map((line, i) => (
+            <Line
+              key={i}
+              points={line.points}
+              stroke="black"
+              strokeWidth={5}
+              lineCap="round"
+              lineJoin="round"
+              draggable={tool === Tool.Cursor} // Add ability to move
+              onDragMove={handleLineDragMove} // Handle move
+              onDragEnd={handleLineDragEnd} // Handle stop moving
+            />
+          ))}
         </Layer>
       </Stage>
       {/* Toolbar */}

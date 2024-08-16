@@ -11,6 +11,7 @@ import { ShapeType, Tool } from "./utils/enums";
 import useCanvasDrag from "./utils/useCanvasDrag";
 
 const App: React.FC = () => {
+  const stageRef = useRef<Konva.Stage | null>(null); // Создаем ref для Stage
   const { tool, selectedShape } = useGlobalContext();
   // local state
   const [shapes, setShapes] = useState<any[]>([]);
@@ -96,8 +97,95 @@ const App: React.FC = () => {
     setLines(lines.slice(0, -1).concat(lastLine));
   };
 
-  // handle mouse up to finish drawing the line
-  const handleMouseUp = () => {
+  // Функция для проверки пересечения и обновления координат линии
+  const updateLineIfIntersecting = (
+    linePoints: number[], // Координаты линии
+    rectBox: any, // Границы прямоугольника
+    shapeType: ShapeType,
+    rect: any // Сам объект фигуры
+  ): number[] | null => {
+    const [x1, y1, x2, y2] = linePoints;
+
+    // Проверяем, пересекается ли линия с прямоугольником
+    if (
+      (x1 >= rectBox.x &&
+        x1 <= rectBox.x + rectBox.width &&
+        y1 >= rectBox.y &&
+        y1 <= rectBox.y + rectBox.height) ||
+      (x2 >= rectBox.x &&
+        x2 <= rectBox.x + rectBox.width &&
+        y2 >= rectBox.y &&
+        y2 <= rectBox.y + rectBox.height)
+    ) {
+      // Вычисляем центр фигуры
+      let centerX = 0;
+      let centerY = 0;
+
+      if (shapeType === ShapeType.Rectangle) {
+        centerX = rectBox.x + rectBox.width / 2;
+        centerY = rectBox.y + rectBox.height / 2;
+      } else if (
+        shapeType === ShapeType.Circle ||
+        shapeType === ShapeType.Star
+      ) {
+        centerX = rect.x();
+        centerY = rect.y();
+      }
+
+      // Обновляем координаты линии
+      if (
+        x1 >= rectBox.x &&
+        x1 <= rectBox.x + rectBox.width &&
+        y1 >= rectBox.y &&
+        y1 <= rectBox.y + rectBox.height
+      ) {
+        linePoints[0] = centerX;
+        linePoints[1] = centerY;
+      } else if (
+        x2 >= rectBox.x &&
+        x2 <= rectBox.x + rectBox.width &&
+        y2 >= rectBox.y &&
+        y2 <= rectBox.y + rectBox.height
+      ) {
+        linePoints[2] = centerX;
+        linePoints[3] = centerY;
+      }
+
+      // Возвращаем обновленные координаты линии
+      return linePoints;
+    }
+
+    return null; // Линия не пересекается с фигурой
+  };
+
+  // Handle mouse up to finish drawing the line
+  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const lastLine = lines[lines.length - 1];
+    const updatedLines = [...lines]; // Clone lines array
+
+    shapes.forEach((shape) => {
+      const rect = stage.findOne(`#${shape.id}`);
+      if (!rect) return;
+
+      const rectBox = rect.getClientRect();
+      const updatedPoints = updateLineIfIntersecting(
+        lastLine.points,
+        rectBox,
+        shape.type,
+        rect
+      );
+
+      if (updatedPoints) {
+        lastLine.points = updatedPoints;
+        updatedLines[updatedLines.length - 1] = lastLine;
+        setLines(updatedLines); // Update state
+        stage.batchDraw(); // Force redraw
+      }
+    });
+
     isDrawing.current = false;
     startPoint.current = null;
   };
@@ -178,6 +266,7 @@ const App: React.FC = () => {
   return (
     <div className="full-screen">
       <Stage
+        ref={stageRef} // Привязываем ref к Stage
         width={window.innerWidth}
         height={window.innerHeight}
         draggable={tool === "hand"} // user can drag canvas only when hand tool is set

@@ -8,5 +8,5 @@ export enum Tool {
 export enum ShapeType {
   Rectangle = "rectangle",
   Circle = "circle",
-  Triangle = "triangle",
+  Star = "star",
 }

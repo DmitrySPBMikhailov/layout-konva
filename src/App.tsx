@@ -1,30 +1,57 @@
-import { Stage, Layer, Rect, Line, Circle } from "react-konva";
+import { Stage, Layer, Rect, Line, Circle, Star } from "react-konva";
 import Konva from "konva";
 import { useState } from "react";
 // Global context
 import { useGlobalContext } from "./context";
-// custom hook for dragging
-import useDrag from "./utils/useDrag";
 // components
 import ToolBar from "./components/ToolBar";
 // enums
 import { ShapeType, Tool } from "./utils/enums";
+// hook for canvas drugging
+import useCanvasDrag from "./utils/useCanvasDrag";
 
 const App: React.FC = () => {
   const { tool, selectedShape } = useGlobalContext();
-  // functions from custom hook for grabbing
-  const { isDragging, handleDragStart, handleDragEnd } = useDrag();
   // local state
-  const [isDrawing, setIsDrawing] = useState(false);
   const [shapes, setShapes] = useState<any[]>([]);
   const [lines, setLines] = useState<any[]>([]);
+  // for straight lines
+  const [isDrawing, setIsDrawing] = useState(false);
   const [newLinePoints, setNewLinePoints] = useState<number[]>([]);
+
+  // canvas dragging
+  const { isCanvasDragging, handleCanvasDragStart, handleCanvasDragEnd } =
+    useCanvasDrag();
+
+  // element start dragging
+  const handleDragStart = (e: any) => {
+    const id = e.target.id();
+    setShapes(
+      shapes.map((shape) => {
+        return {
+          ...shape,
+          isDragging: shape.id === id,
+        };
+      })
+    );
+  };
+  // element stop dragging
+  const handleDragEnd = () => {
+    setShapes(
+      shapes.map((shape) => {
+        return {
+          ...shape,
+          isDragging: false,
+        };
+      })
+    );
+  };
 
   // Define cursor depends on instrument
   const getCursorStyle = () => {
     switch (tool) {
       case "hand":
-        return isDragging ? "grabbing" : "grab";
+        return isCanvasDragging ? "grabbing" : "grab";
       case "cursor":
         return "default";
       case "shape":
@@ -41,7 +68,7 @@ const App: React.FC = () => {
     const pos = stage?.getRelativePointerPosition();
 
     if (tool === Tool.Line && pos) {
-      setNewLinePoints([pos.x, pos.y]); // Начальная точка линии
+      setNewLinePoints([pos.x, pos.y]); // Starting point of the line
       setIsDrawing(true);
     }
   };
@@ -53,7 +80,7 @@ const App: React.FC = () => {
     const pos = stage?.getRelativePointerPosition() || { x: 0, y: 0 };
 
     if (pos) {
-      // Обновляем конечную точку линии
+      // Renew last point of the line
       const updatedLinePoints = [
         newLinePoints[0],
         newLinePoints[1],
@@ -83,9 +110,12 @@ const App: React.FC = () => {
   };
 
   const createShape = (shapeType: ShapeType, x: number, y: number) => {
+    const shapeId = `${shapeType}-${Date.now()}`; // Generate unique ID for each figure
     switch (shapeType) {
       case ShapeType.Rectangle:
         return {
+          id: shapeId,
+          isDragging: false,
           type: "rectangle",
           x,
           y,
@@ -94,9 +124,24 @@ const App: React.FC = () => {
           fill: "red",
         };
       case ShapeType.Circle:
-        return { type: "circle", x, y, radius: 50, fill: "green" };
-      case ShapeType.Triangle:
-        return { type: "triangle", x, y, fill: "blue" }; // Простая фигура для примера
+        return {
+          id: shapeId,
+          isDragging: false,
+          type: "circle",
+          x,
+          y,
+          radius: 50,
+          fill: "green",
+        };
+      case ShapeType.Star:
+        return {
+          id: shapeId,
+          isDragging: false,
+          type: "star",
+          x,
+          y,
+          fill: "blue",
+        };
       default:
         return null;
     }
@@ -108,8 +153,8 @@ const App: React.FC = () => {
         width={window.innerWidth}
         height={window.innerHeight}
         draggable={tool === "hand"} // user can drag canvas only when hand tool is set
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        onDragStart={handleCanvasDragStart}
+        onDragEnd={handleCanvasDragEnd}
         style={{ cursor: getCursorStyle() }} // dynamically changing cursor
         onClick={handleStageClick}
         onMouseDown={handleMouseDown}
@@ -122,42 +167,46 @@ const App: React.FC = () => {
               return (
                 <Rect
                   key={i}
+                  id={shape.id}
                   x={shape.x}
                   y={shape.y}
                   width={shape.width}
                   height={shape.height}
                   fill={shape.fill}
                   draggable={tool === Tool.Cursor}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               );
             } else if (shape.type === ShapeType.Circle) {
               return (
                 <Circle
                   key={i}
+                  id={shape.id}
                   x={shape.x}
                   y={shape.y}
                   radius={shape.radius}
                   fill={shape.fill}
                   draggable={tool === Tool.Cursor}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 />
               );
-            } else if (shape.type === ShapeType.Triangle) {
-              // Треугольник можно реализовать через Line с тремя точками
-              const trianglePoints = [
-                shape.x,
-                shape.y,
-                shape.x - 50,
-                shape.y + 100,
-                shape.x + 50,
-                shape.y + 100,
-              ];
+            } else if (shape.type === ShapeType.Star) {
               return (
-                <Line
+                <Star
                   key={i}
-                  points={trianglePoints}
+                  id={shape.id}
+                  x={shape.x}
+                  y={shape.y}
+                  numPoints={5}
                   fill={shape.fill}
-                  closed
                   draggable={tool === Tool.Cursor}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  rotation={0}
+                  innerRadius={20}
+                  outerRadius={50}
                 />
               );
             }

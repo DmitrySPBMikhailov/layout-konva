@@ -92,12 +92,10 @@ const ToolBar = () => {
               {ShapeType.Circle.slice(0, 1).toUpperCase() +
                 ShapeType.Circle.slice(1)}
             </li>
-            <li
-              onClick={() => handleShapeSelect(ShapeType.Triangle, "Triangle")}
-            >
-              {/* Triangle, first letter is capitalized */}
-              {ShapeType.Triangle.slice(0, 1).toUpperCase() +
-                ShapeType.Triangle.slice(1)}
+            <li onClick={() => handleShapeSelect(ShapeType.Star, "Star")}>
+              {/* Star, first letter is capitalized */}
+              {ShapeType.Star.slice(0, 1).toUpperCase() +
+                ShapeType.Star.slice(1)}
             </li>
           </ul>
         )}

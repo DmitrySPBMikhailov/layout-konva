@@ -93,7 +93,6 @@ const App: React.FC = () => {
       pos.x,
       pos.y,
     ];
-
     setLines(lines.slice(0, -1).concat(lastLine));
   };
 
@@ -238,29 +237,34 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLineDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
-    const id = e.target.id();
-    const { x, y } = e.target.position();
-
-    setLines(
-      lines.map((line) => {
-        if (line.id === id) {
-          const dx = x - line.points[0];
-          const dy = y - line.points[1];
-          return {
-            ...line,
-            points: line.points.map((point: any, index: any) =>
-              index % 2 === 0 ? point + dx : point + dy
-            ),
-          };
-        }
-        return line;
-      })
-    );
-  };
+  const handleLineDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {};
 
   const handleLineDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-    // finish moving
+    const id = e.target.id();
+    const { x: dx, y: dy } = e.target.position(); // Получаем сдвиг линии после завершения перемещения
+
+    setLines((prevLines) =>
+      prevLines.map((line) => {
+        if (line.id === id) {
+          const [x1, y1, x2, y2] = line.points;
+          const newPoints = [
+            x1 + dx,
+            y1 + dy, // Обновляем первую точку
+            x2 + dx,
+            y2 + dy, // Обновляем вторую точку
+          ];
+
+          return {
+            ...line,
+            points: newPoints,
+          };
+        }
+        return line; // Возвращаем остальные линии без изменений
+      })
+    );
+
+    // Сбрасываем позицию в Konva после окончания перемещения
+    e.target.position({ x: 0, y: 0 });
   };
 
   return (
@@ -332,6 +336,7 @@ const App: React.FC = () => {
           {lines.map((line, i) => (
             <Line
               key={i}
+              id={line.id}
               points={line.points}
               stroke="black"
               strokeWidth={5}

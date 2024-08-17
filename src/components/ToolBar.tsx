@@ -70,6 +70,7 @@ const ToolBar = () => {
             onClick={(e) => {
               e.stopPropagation(); // Останавливаем всплытие события
               setIsDropdownOpen(!isDropdownOpen); // Переключаем состояние списка
+              setTool(Tool.Shape);
             }}
           >
             {isDropdownOpen ? <GoTriangleUp /> : <GoTriangleDown />}

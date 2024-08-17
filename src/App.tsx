@@ -1,3 +1,4 @@
+import React from "react";
 import { Stage, Layer, Rect, Line, Circle, Star } from "react-konva";
 import Konva from "konva";
 import { useState, useRef } from "react";
@@ -72,7 +73,11 @@ const App: React.FC = () => {
       startPoint.current = { x: pos.x, y: pos.y };
       setLines([
         ...lines,
-        { id: `line-${Date.now()}`, points: [pos.x, pos.y, pos.x, pos.y] },
+        {
+          id: `line-${Date.now()}`,
+          points: [pos.x, pos.y, pos.x, pos.y],
+          draggable: true,
+        },
       ]);
     }
   };
@@ -158,12 +163,16 @@ const App: React.FC = () => {
   };
 
   // Handle mouse up to finish drawing the line
-  const handleMouseUp = (e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleMouseUp = () => {
     const stage = stageRef.current;
     if (!stage) return;
 
     const lastLine = lines[lines.length - 1];
-    const updatedLines = [...lines]; // Clone lines array
+    if (!lastLine || !lastLine.points) return; // Проверяем, существуют ли точки у линии
+    const updatedLines = [...lines]; // Копируем массив линий
+
+    let isStartConnected = false;
+    let isEndConnected = false;
 
     shapes.forEach((shape) => {
       const rect = stage.findOne(`#${shape.id}`);
@@ -180,10 +189,31 @@ const App: React.FC = () => {
       if (updatedPoints) {
         lastLine.points = updatedPoints;
         updatedLines[updatedLines.length - 1] = lastLine;
-        setLines(updatedLines); // Update state
-        stage.batchDraw(); // Force redraw
+        setLines(updatedLines); // Обновляем состояние
+        stage.batchDraw(); // Перерисовка
+      }
+
+      // Проверка пересечения начальной точки линии с фигурой
+      if (
+        checkPointInsideRect(lastLine.points[0], lastLine.points[1], rectBox)
+      ) {
+        isStartConnected = true;
+      }
+
+      // Проверка пересечения конечной точки линии с фигурой
+      if (
+        checkPointInsideRect(lastLine.points[2], lastLine.points[3], rectBox)
+      ) {
+        isEndConnected = true;
       }
     });
+
+    // Если хотя бы одна точка соединена с фигурой, делаем линию неподвижной
+    if (isStartConnected || isEndConnected) {
+      lastLine.draggable = false; // Устанавливаем draggable в false
+      updatedLines[updatedLines.length - 1] = lastLine; // Обновляем линию в массиве
+      setLines(updatedLines); // Обновляем состояние линий
+    }
 
     isDrawing.current = false;
     startPoint.current = null;
@@ -237,14 +267,14 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLineDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {};
-
+  // handle drag end for lines
   const handleLineDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const id = e.target.id();
     const { x: dx, y: dy } = e.target.position(); // Получаем сдвиг линии после завершения перемещения
     const stage = stageRef.current;
 
     if (!stage) return;
+    let myDraggble = true;
 
     setLines((prevLines) =>
       prevLines.map((line) => {
@@ -252,27 +282,40 @@ const App: React.FC = () => {
           let [x1, y1, x2, y2] = line.points;
           let newPoints = [x1 + dx, y1 + dy, x2 + dx, y2 + dy];
 
+          let isStartConnected = false;
+          let isEndConnected = false;
+
           // Проверяем пересечения с фигурами
           shapes.forEach((shape) => {
             const rect = stage.findOne(`#${shape.id}`);
             if (!rect) return;
 
             const rectBox = rect.getClientRect();
-            const updatedPoints = updateLineIfIntersecting(
-              newPoints,
-              rectBox,
-              shape.type,
-              rect
-            );
 
-            if (updatedPoints) {
-              newPoints = updatedPoints; // Обновляем координаты, если есть пересечение
+            // Проверка пересечения с началом и концом линии
+            if (checkPointInsideRect(newPoints[0], newPoints[1], rectBox)) {
+              // Начальная точка пересекается с фигурой
+              newPoints[0] = rectBox.x + rectBox.width / 2;
+              newPoints[1] = rectBox.y + rectBox.height / 2;
+              isStartConnected = true;
+              myDraggble = false;
+            }
+
+            if (checkPointInsideRect(newPoints[2], newPoints[3], rectBox)) {
+              // Конечная точка пересекается с фигурой
+              newPoints[2] = rectBox.x + rectBox.width / 2;
+              newPoints[3] = rectBox.y + rectBox.height / 2;
+              isEndConnected = true;
+              myDraggble = false;
             }
           });
 
           return {
             ...line,
-            points: newPoints, // Применяем обновленные координаты
+            points: newPoints,
+            isStartConnected, // Флаг соединения начала линии
+            isEndConnected, // Флаг соединения конца линии
+            draggable: myDraggble, // Можно ли перетаскивать всю линию
           };
         }
         return line;
@@ -281,6 +324,86 @@ const App: React.FC = () => {
 
     // Сбрасываем позицию в Konva после окончания перемещения
     e.target.position({ x: 0, y: 0 });
+  };
+
+  // Вспомогательная функция для проверки, находится ли точка внутри прямоугольника
+  const checkPointInsideRect = (x: number, y: number, rectBox: any) => {
+    return (
+      x >= rectBox.x &&
+      x <= rectBox.x + rectBox.width &&
+      y >= rectBox.y &&
+      y <= rectBox.y + rectBox.height
+    );
+  };
+
+  // Handle point dragging to adjust line endpoints
+  const handlePointDragMove = (
+    e: Konva.KonvaEventObject<DragEvent>,
+    pointIndex: number,
+    lineId: string
+  ) => {
+    const { x, y } = e.target.position(); // Новые координаты точки
+
+    setLines((prevLines) =>
+      prevLines.map((line) => {
+        if (line.id === lineId) {
+          const newPoints = [...line.points];
+          // Обновляем координаты соответствующей точки (0, 1 - начало линии; 2, 3 - конец линии)
+          newPoints[pointIndex * 2] = x;
+          newPoints[pointIndex * 2 + 1] = y;
+          return {
+            ...line,
+            points: newPoints,
+          };
+        }
+        return line;
+      })
+    );
+  };
+
+  const handlePointDragEnd = (lineId: string) => {
+    const stage = stageRef.current;
+
+    if (!stage) return;
+
+    const line = lines.find((line) => line.id === lineId);
+
+    if (!line) return;
+
+    const { points } = line;
+    const [x1, y1, x2, y2] = points;
+
+    let isStartConnected = false;
+    let isEndConnected = false;
+
+    shapes.forEach((shape) => {
+      const rect = stage.findOne(`#${shape.id}`);
+      if (!rect) return;
+
+      const rectBox = rect.getClientRect();
+
+      // Проверка пересечения начальной точки линии с фигурой
+      if (checkPointInsideRect(x1, y1, rectBox)) {
+        isStartConnected = true;
+      }
+
+      // Проверка пересечения конечной точки линии с фигурой
+      if (checkPointInsideRect(x2, y2, rectBox)) {
+        isEndConnected = true;
+      }
+    });
+
+    setLines((prevLines) =>
+      prevLines.map((line) => {
+        if (line.id === lineId) {
+          return {
+            ...line,
+            draggable: !isStartConnected && !isEndConnected,
+          };
+        }
+        return line;
+      })
+    );
   };
 
   return (
@@ -350,18 +473,40 @@ const App: React.FC = () => {
             return null;
           })}
           {lines.map((line, i) => (
-            <Line
-              key={i}
-              id={line.id}
-              points={line.points}
-              stroke="black"
-              strokeWidth={5}
-              lineCap="round"
-              lineJoin="round"
-              draggable={tool === Tool.Cursor} // Add ability to move
-              onDragMove={handleLineDragMove} // Handle move
-              onDragEnd={handleLineDragEnd} // Handle stop moving
-            />
+            <React.Fragment key={i}>
+              <Line
+                id={line.id}
+                points={line.points}
+                stroke="black"
+                strokeWidth={5}
+                lineCap="round"
+                lineJoin="round"
+                draggable={line.draggable} // Can we drag the whole line?
+                onDragEnd={handleLineDragEnd} // Handle stop moving
+              />
+
+              {/* Control Point for Start */}
+              <Circle
+                x={line.points[0]}
+                y={line.points[1]}
+                radius={5}
+                fill="transparent"
+                draggable
+                onDragMove={(e) => handlePointDragMove(e, 0, line.id)}
+                onDragEnd={() => handlePointDragEnd(line.id)}
+              />
+
+              {/* Control Point for End */}
+              <Circle
+                x={line.points[2]}
+                y={line.points[3]}
+                radius={5}
+                fill="transparent"
+                draggable
+                onDragMove={(e) => handlePointDragMove(e, 1, line.id)}
+                onDragEnd={() => handlePointDragEnd(line.id)}
+              />
+            </React.Fragment>
           ))}
         </Layer>
       </Stage>

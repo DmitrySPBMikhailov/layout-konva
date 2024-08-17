@@ -242,24 +242,40 @@ const App: React.FC = () => {
   const handleLineDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const id = e.target.id();
     const { x: dx, y: dy } = e.target.position(); // Получаем сдвиг линии после завершения перемещения
+    const stage = stageRef.current;
+
+    if (!stage) return;
 
     setLines((prevLines) =>
       prevLines.map((line) => {
         if (line.id === id) {
-          const [x1, y1, x2, y2] = line.points;
-          const newPoints = [
-            x1 + dx,
-            y1 + dy, // Обновляем первую точку
-            x2 + dx,
-            y2 + dy, // Обновляем вторую точку
-          ];
+          let [x1, y1, x2, y2] = line.points;
+          let newPoints = [x1 + dx, y1 + dy, x2 + dx, y2 + dy];
+
+          // Проверяем пересечения с фигурами
+          shapes.forEach((shape) => {
+            const rect = stage.findOne(`#${shape.id}`);
+            if (!rect) return;
+
+            const rectBox = rect.getClientRect();
+            const updatedPoints = updateLineIfIntersecting(
+              newPoints,
+              rectBox,
+              shape.type,
+              rect
+            );
+
+            if (updatedPoints) {
+              newPoints = updatedPoints; // Обновляем координаты, если есть пересечение
+            }
+          });
 
           return {
             ...line,
-            points: newPoints,
+            points: newPoints, // Применяем обновленные координаты
           };
         }
-        return line; // Возвращаем остальные линии без изменений
+        return line;
       })
     );
 

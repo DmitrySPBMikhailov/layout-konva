@@ -13,28 +13,28 @@ const ToolBar = () => {
   const [selectedShapeLabel, setSelectedShapeLabel] = useState("Rectangle");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // Обработчик выбора фигуры
+  // Shape selection handler
   const handleShapeSelect = (shape: ShapeType, label: string) => {
     setSelectedShape(shape);
     setSelectedShapeLabel(label);
-    setIsDropdownOpen(false); // Закрываем список после выбора
+    setIsDropdownOpen(false); // Close the list after selection
   };
 
-  // Обработчик клика по кнопке "Shape"
+  // Click handler for the "Shape" button
   const handleShapeButtonClick = () => {
     if (!isDropdownOpen) {
-      // Если выпадающий список не открыт, активируем инструмент "Shape" и выбираем прямоугольник
+      // If the drop-down list is not open, activate the "Shape" tool and select the rectangle
       setTool(Tool.Shape);
       if (!selectedShape) {
         handleShapeSelect(ShapeType.Rectangle, "Rectangle");
       }
     } else {
-      // Если список открыт, просто переключаем его состояние
+      // If the list is open, simply switch its state
       setIsDropdownOpen(!isDropdownOpen);
     }
   };
 
-  // Функция для установки стиля активной кнопки
+  // Function to set the style of the active button
   const getButtonStyle = (currentTool: Tool) => {
     return tool === currentTool
       ? { border: "2px solid blue" }
@@ -57,7 +57,7 @@ const ToolBar = () => {
       >
         <CiLocationArrow1 />
       </button>
-      {/* Кнопка для выбора фигуры */}
+      {/* Button to select a figure */}
       <div className="dropdown">
         <button
           onClick={handleShapeButtonClick}
@@ -68,15 +68,15 @@ const ToolBar = () => {
 
           <span
             onClick={(e) => {
-              e.stopPropagation(); // Останавливаем всплытие события
-              setIsDropdownOpen(!isDropdownOpen); // Переключаем состояние списка
+              e.stopPropagation(); // Stopping an event from bubbling
+              setIsDropdownOpen(!isDropdownOpen); // Switching the state of the list
               setTool(Tool.Shape);
             }}
           >
             {isDropdownOpen ? <GoTriangleUp /> : <GoTriangleDown />}
           </span>
         </button>
-        {/* Выпадающий список для выбора фигуры */}
+        {/* Drop-down list for selecting a shape */}
         {isDropdownOpen && (
           <ul className="dropdown-menu">
             <li

@@ -101,16 +101,16 @@ const App: React.FC = () => {
     setLines(lines.slice(0, -1).concat(lastLine));
   };
 
-  // Функция для проверки пересечения и обновления координат линии
+  // function for checking intersection and updating line coordinates
   const updateLineIfIntersecting = (
-    linePoints: number[], // Координаты линии
-    rectBox: any, // Границы прямоугольника
+    linePoints: number[], // Line coordinates
+    rectBox: any, // Rectangle Borders
     shapeType: ShapeType,
-    rect: any // Сам объект фигуры
+    rect: any // The figure object
   ): number[] | null => {
     const [x1, y1, x2, y2] = linePoints;
 
-    // Проверяем, пересекается ли линия с прямоугольником
+    // Checking if the line intersects with the rectangle
     if (
       (x1 >= rectBox.x &&
         x1 <= rectBox.x + rectBox.width &&
@@ -121,7 +121,7 @@ const App: React.FC = () => {
         y2 >= rectBox.y &&
         y2 <= rectBox.y + rectBox.height)
     ) {
-      // Вычисляем центр фигуры
+      // Calculate the center of the figure
       let centerX = 0;
       let centerY = 0;
 
@@ -136,7 +136,7 @@ const App: React.FC = () => {
         centerY = rect.y();
       }
 
-      // Обновляем координаты линии
+      // Update line coordinates
       if (
         x1 >= rectBox.x &&
         x1 <= rectBox.x + rectBox.width &&
@@ -155,11 +155,11 @@ const App: React.FC = () => {
         linePoints[3] = centerY;
       }
 
-      // Возвращаем обновленные координаты линии
+      // Returning updated line coordinates
       return linePoints;
     }
 
-    return null; // Линия не пересекается с фигурой
+    return null; // The line does not intersect with the figure
   };
 
   // Handle mouse up to finish drawing the line
@@ -168,8 +168,8 @@ const App: React.FC = () => {
     if (!stage) return;
 
     const lastLine = lines[lines.length - 1];
-    if (!lastLine || !lastLine.points) return; // Проверяем, существуют ли точки у линии
-    const updatedLines = [...lines]; // Копируем массив линий
+    if (!lastLine || !lastLine.points) return; // Checking if there are points near the line
+    const updatedLines = [...lines]; // Copying an array of lines
 
     let isStartConnected = false;
     let isEndConnected = false;
@@ -189,18 +189,18 @@ const App: React.FC = () => {
       if (updatedPoints) {
         lastLine.points = updatedPoints;
         updatedLines[updatedLines.length - 1] = lastLine;
-        setLines(updatedLines); // Обновляем состояние
-        stage.batchDraw(); // Перерисовка
+        setLines(updatedLines); // Update the status
+        stage.batchDraw(); // Redrawing
       }
 
-      // Проверка пересечения начальной точки линии с фигурой
+      // Checking the intersection of the starting point of a line with a shape
       if (
         checkPointInsideRect(lastLine.points[0], lastLine.points[1], rectBox)
       ) {
         isStartConnected = true;
       }
 
-      // Проверка пересечения конечной точки линии с фигурой
+      // Checking the intersection of the end point of a line with a shape
       if (
         checkPointInsideRect(lastLine.points[2], lastLine.points[3], rectBox)
       ) {
@@ -208,11 +208,11 @@ const App: React.FC = () => {
       }
     });
 
-    // Если хотя бы одна точка соединена с фигурой, делаем линию неподвижной
+    // If at least one point is connected to the figure, make the line motionless
     if (isStartConnected || isEndConnected) {
-      lastLine.draggable = false; // Устанавливаем draggable в false
-      updatedLines[updatedLines.length - 1] = lastLine; // Обновляем линию в массиве
-      setLines(updatedLines); // Обновляем состояние линий
+      lastLine.draggable = false; // Set draggable to false
+      updatedLines[updatedLines.length - 1] = lastLine; // Updating a line in an array
+      setLines(updatedLines); // Update the state of the lines
     }
 
     isDrawing.current = false;
@@ -270,7 +270,7 @@ const App: React.FC = () => {
   // handle drag end for lines
   const handleLineDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     const id = e.target.id();
-    const { x: dx, y: dy } = e.target.position(); // Получаем сдвиг линии после завершения перемещения
+    const { x: dx, y: dy } = e.target.position(); // We get the line shift after the movement is completed
     const stage = stageRef.current;
 
     if (!stage) return;
@@ -285,16 +285,16 @@ const App: React.FC = () => {
           let isStartConnected = false;
           let isEndConnected = false;
 
-          // Проверяем пересечения с фигурами
+          // Checking intersections with shapes
           shapes.forEach((shape) => {
             const rect = stage.findOne(`#${shape.id}`);
             if (!rect) return;
 
             const rectBox = rect.getClientRect();
 
-            // Проверка пересечения с началом и концом линии
+            // Checking the intersection with the beginning and end of a line
             if (checkPointInsideRect(newPoints[0], newPoints[1], rectBox)) {
-              // Начальная точка пересекается с фигурой
+              // The starting point intersects with the shape
               newPoints[0] = rectBox.x + rectBox.width / 2;
               newPoints[1] = rectBox.y + rectBox.height / 2;
               isStartConnected = true;
@@ -302,7 +302,7 @@ const App: React.FC = () => {
             }
 
             if (checkPointInsideRect(newPoints[2], newPoints[3], rectBox)) {
-              // Конечная точка пересекается с фигурой
+              // End point intersects with shape
               newPoints[2] = rectBox.x + rectBox.width / 2;
               newPoints[3] = rectBox.y + rectBox.height / 2;
               isEndConnected = true;
@@ -313,20 +313,20 @@ const App: React.FC = () => {
           return {
             ...line,
             points: newPoints,
-            isStartConnected, // Флаг соединения начала линии
-            isEndConnected, // Флаг соединения конца линии
-            draggable: myDraggble, // Можно ли перетаскивать всю линию
+            isStartConnected, // Line Start Connection Flag
+            isEndConnected, // End of line connection flag
+            draggable: myDraggble, // Is it possible to drag the entire line
           };
         }
         return line;
       })
     );
 
-    // Сбрасываем позицию в Konva после окончания перемещения
+    // Resetting the position in Konva after the end of the move
     e.target.position({ x: 0, y: 0 });
   };
 
-  // Вспомогательная функция для проверки, находится ли точка внутри прямоугольника
+  // Helper function to check if a point is inside a rectangle
   const checkPointInsideRect = (x: number, y: number, rectBox: any) => {
     return (
       x >= rectBox.x &&
@@ -342,13 +342,13 @@ const App: React.FC = () => {
     pointIndex: number,
     lineId: string
   ) => {
-    const { x, y } = e.target.position(); // Новые координаты точки
+    const { x, y } = e.target.position(); // New point coordinates
 
     setLines((prevLines) =>
       prevLines.map((line) => {
         if (line.id === lineId) {
           const newPoints = [...line.points];
-          // Обновляем координаты соответствующей точки (0, 1 - начало линии; 2, 3 - конец линии)
+          // We update the coordinates of the corresponding point (0, 1 - the beginning of the line; 2, 3 - the end of the line)
           newPoints[pointIndex * 2] = x;
           newPoints[pointIndex * 2 + 1] = y;
           return {
@@ -382,12 +382,12 @@ const App: React.FC = () => {
 
       const rectBox = rect.getClientRect();
 
-      // Проверка пересечения начальной точки линии с фигурой
+      // Checking the intersection of the starting point of a line with a shape
       if (checkPointInsideRect(x1, y1, rectBox)) {
         isStartConnected = true;
       }
 
-      // Проверка пересечения конечной точки линии с фигурой
+      // Checking the intersection of the end point of a line with a shape
       if (checkPointInsideRect(x2, y2, rectBox)) {
         isEndConnected = true;
       }
@@ -409,7 +409,7 @@ const App: React.FC = () => {
   return (
     <div className="full-screen">
       <Stage
-        ref={stageRef} // Привязываем ref к Stage
+        ref={stageRef} // Linking ref to Stage
         width={window.innerWidth}
         height={window.innerHeight}
         draggable={tool === "hand"} // user can drag canvas only when hand tool is set

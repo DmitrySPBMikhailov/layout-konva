@@ -70,7 +70,10 @@ const App: React.FC = () => {
     const stage = e.target.getStage();
     const pos = stage?.getRelativePointerPosition();
     if (pos) {
-      startPoint.current = { x: pos.x, y: pos.y };
+      startPoint.current = {
+        x: pos.x,
+        y: pos.y,
+      };
       setLines([
         ...lines,
         {
@@ -88,7 +91,6 @@ const App: React.FC = () => {
 
     const stage = e.target.getStage();
     const pos = stage?.getRelativePointerPosition();
-
     if (!pos) return;
 
     const lastLine = lines[lines.length - 1];
@@ -179,6 +181,11 @@ const App: React.FC = () => {
       if (!rect) return;
 
       const rectBox = rect.getClientRect();
+      // if canvas was dragged
+      const posAbsolute = stage?.getAbsolutePosition();
+      rectBox.x -= posAbsolute.x;
+      rectBox.y -= posAbsolute.y;
+
       const updatedPoints = updateLineIfIntersecting(
         lastLine.points,
         rectBox,
@@ -291,6 +298,10 @@ const App: React.FC = () => {
             if (!rect) return;
 
             const rectBox = rect.getClientRect();
+            // if canvas was dragged
+            const posAbsolute = stage?.getAbsolutePosition();
+            rectBox.x -= posAbsolute.x;
+            rectBox.y -= posAbsolute.y;
 
             // Checking the intersection with the beginning and end of a line
             if (checkPointInsideRect(newPoints[0], newPoints[1], rectBox)) {
@@ -381,6 +392,10 @@ const App: React.FC = () => {
       if (!rect) return;
 
       const rectBox = rect.getClientRect();
+      // if canvas was dragged
+      const posAbsolute = stage?.getAbsolutePosition();
+      rectBox.x -= posAbsolute.x;
+      rectBox.y -= posAbsolute.y;
 
       // Checking the intersection of the starting point of a line with a shape
       if (checkPointInsideRect(x1, y1, rectBox)) {
